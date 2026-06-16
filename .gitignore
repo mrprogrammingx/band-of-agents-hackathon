@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local crawler database (shared across all crawlers)
+data/jobs.db
+
+backend/agent_test/agent_config.yaml

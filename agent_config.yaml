@@ -1,0 +1,3 @@
+drafter:
+  agent_id: ${BAND_DRAFTER_AGENT_ID}
+  api_key:  ${BAND_DRAFTER_AGENT_API_KEY}
