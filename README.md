@@ -57,6 +57,7 @@
 
 ### Examples
 **Basic usage:**
+
 ```bash
 python backend/crawler/linkedin.py \
   --keywords "Data Engineer" \
@@ -64,7 +65,8 @@ python backend/crawler/linkedin.py \
   --date-posted week \
   --max-pages 2 \
   --delay 0.5
-
+  
+```
 
 Example (single page, verbose):
 
