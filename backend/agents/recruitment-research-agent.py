@@ -9,12 +9,13 @@ from typing import List, Optional
 import fitz
 import requests
 from dotenv import load_dotenv
-from firecrawl import FirecrawlApp
+from duckduckgo_search import DDGS
+
 from pydantic import BaseModel
 
+from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
 
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -24,18 +25,17 @@ from band.config import load_agent_config
 
 
 # =====================================================
-# Logging
+# LOGGING
 # =====================================================
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 llm = None
-firecrawl = None
 
 
 # =====================================================
-# Resume Models
+# RESUME MODELS
 # =====================================================
 
 class Experience(BaseModel):
@@ -71,7 +71,7 @@ class ResumeProfile(BaseModel):
 
 
 # =====================================================
-# Prompts
+# PROMPTS
 # =====================================================
 
 extract_prompt = ChatPromptTemplate.from_template(
@@ -118,74 +118,89 @@ Return JSON only.
 
 
 # =====================================================
-# Web Search Tool
+# SEARCH TOOL
 # =====================================================
 
 @tool
 def web_search(query: str) -> str:
     """
-    Search the web using Firecrawl.
+    Search the web and return only concise results.
+    Prevents context overflow.
     """
 
     try:
-        results = firecrawl.search(
-            query=query,
-            limit=5
-        )
+
+        results = []
+
+        with DDGS() as ddgs:
+
+            for r in ddgs.text(
+                query,
+                region="wt-wt",
+                max_results=3
+            ):
+
+                results.append(
+                    {
+                        "title": r.get("title", ""),
+                        "url": r.get("href", ""),
+                        "snippet": (
+                            r.get("body", "")[:300]
+                        )
+                    }
+                )
 
         return json.dumps(
             results,
-            indent=2,
-            ensure_ascii=False
+            ensure_ascii=False,
+            indent=2
         )
 
     except Exception as e:
+
         return f"Search failed: {str(e)}"
 
 
 # =====================================================
-# Scrape URL Tool
+# SIMPLE WEBPAGE READER
 # =====================================================
 
 @tool
-def scrape_url(url: str) -> str:
+def read_webpage(url: str) -> str:
     """
-    Scrape webpage content.
+    Read webpage content with strict limits.
     """
 
     try:
 
-        result = firecrawl.scrape_url(
-            url=url,
-            formats=["markdown"]
+        response = requests.get(
+            url,
+            timeout=20,
+            headers={
+                "User-Agent":
+                "Mozilla/5.0"
+            }
         )
 
-        if isinstance(result, dict):
+        text = response.text
 
-            markdown = (
-                result.get("markdown")
-                or result.get("content")
-                or ""
-            )
+        text = text[:5000]
 
-            return markdown[:20000]
-
-        return str(result)
+        return text
 
     except Exception as e:
 
-        return f"Scrape failed: {str(e)}"
+        return f"Failed to read webpage: {str(e)}"
 
 
 # =====================================================
-# Download File Tool
+# DOWNLOAD FILE
 # =====================================================
 
 @tool
 def download_file(url: str) -> str:
     """
-    Download a file from URL.
-    Returns local path.
+    Download a file and return local path.
     """
 
     try:
@@ -200,8 +215,8 @@ def download_file(url: str) -> str:
                 )
 
                 url = (
-                    f"https://drive.google.com/uc?"
-                    f"export=download&id={file_id}"
+                    "https://drive.google.com/uc"
+                    f"?export=download&id={file_id}"
                 )
 
         response = requests.get(
@@ -233,13 +248,13 @@ def download_file(url: str) -> str:
 
 
 # =====================================================
-# PDF Extraction Tool
+# PDF EXTRACTION
 # =====================================================
 
 @tool
 def extract_pdf(url: str) -> str:
     """
-    Download PDF and extract text.
+    Extract text from PDF URL.
     """
 
     try:
@@ -249,16 +264,17 @@ def extract_pdf(url: str) -> str:
         if pdf_path.startswith("Download failed"):
             return pdf_path
 
-        pdf = fitz.open(pdf_path)
+        doc = fitz.open(pdf_path)
 
         text = ""
 
-        for page in pdf:
+        for page in doc:
             text += page.get_text()
 
-        pdf.close()
+        doc.close()
 
-        return text[:50000]
+        # Prevent context overflow
+        return text[:15000]
 
     except Exception as e:
 
@@ -266,29 +282,33 @@ def extract_pdf(url: str) -> str:
 
 
 # =====================================================
-# Resume Parser
+# RESUME PARSER
 # =====================================================
 
 @tool
 def parse_resume(resume_text: str) -> str:
     """
-    Parse resume text into structured JSON.
+    Parse resume text.
     """
 
     try:
+
+        resume_text = resume_text[:15000]
 
         chain = extract_prompt | llm
 
         result = chain.invoke(
             {
                 "resume": resume_text,
-                "schema": ResumeProfile.model_json_schema()
+                "schema":
+                ResumeProfile.model_json_schema()
             }
         )
 
         content = result.content
 
         if "```json" in content:
+
             content = (
                 content.split("```json")[1]
                 .split("```")[0]
@@ -302,7 +322,7 @@ def parse_resume(resume_text: str) -> str:
 
 
 # =====================================================
-# Resume Matcher
+# JOB MATCHER
 # =====================================================
 
 @tool
@@ -311,13 +331,12 @@ def match_resume_to_job(
     job_description: str
 ) -> str:
     """
-    Match resume against a job.
+    match_resume_to_job.
     """
-
     try:
 
         profile = parse_resume.func(
-            resume_text
+            resume_text[:15000]
         )
 
         chain = match_prompt | llm
@@ -325,7 +344,7 @@ def match_resume_to_job(
         result = chain.invoke(
             {
                 "profile": profile,
-                "job": job_description
+                "job": job_description[:5000]
             }
         )
 
@@ -337,26 +356,18 @@ def match_resume_to_job(
 
 
 # =====================================================
-# Main
+# MAIN
 # =====================================================
 
 async def main():
 
     global llm
-    global firecrawl
 
     load_dotenv()
 
-    firecrawl = FirecrawlApp(
-        api_key=os.getenv(
-            "FIRECRAWL_API_KEY"
-        )
-    )
-
     agent_id, api_key = load_agent_config(
         "recruitment-research-agent"
-    ) 
-    # recruitment-research-agent
+    )
 
     llm = ChatOpenAI(
         model="deepseek-ai/DeepSeek-V4-Pro",
@@ -371,8 +382,8 @@ async def main():
         llm=llm,
         checkpointer=InMemorySaver(),
         additional_tools=[
-            web_search,
-            scrape_url,
+            # web_search,
+            read_webpage,
             download_file,
             extract_pdf,
             parse_resume,
@@ -382,24 +393,22 @@ async def main():
 You are a Recruitment Research Agent.
 
 Capabilities:
+- Resume analysis
+- Job matching
+- Job search
+- Company research
+- PDF reading
+- Web search
 
-1. Parse resumes pasted into chat.
-2. Match resumes against jobs.
-3. Search the web.
-4. Scrape webpages.
-5. Download documents.
-6. Read PDFs.
-7. Read public Google Drive PDFs.
-8. Research companies and candidates.
+Important rules:
 
-Instructions:
-
-- Use web_search for current information.
-- Use scrape_url for webpage analysis.
-- Use extract_pdf for PDF links.
-- Use parse_resume for CV analysis.
-- Use match_resume_to_job when both CV and job description exist.
-- Always use tools before answering.
+1. Never search more than once unless needed.
+2. Never read more than one webpage.
+3. Keep answers concise.
+4. Use web_search for job searches.
+5. Use extract_pdf only when a PDF URL is provided.
+6. Avoid large outputs.
+7. If enough information is available, answer without using tools.
 """
     )
 
@@ -408,7 +417,7 @@ Instructions:
         agent_id=agent_id,
         api_key=api_key,
         ws_url=os.getenv("BAND_WS_URL"),
-        rest_url=os.getenv("BAND_REST_URL"),
+        rest_url=os.getenv("BAND_REST_URL")
     )
 
     logger.info(
