@@ -1,3 +1,11 @@
 drafter:
   agent_id: ${BAND_DRAFTER_AGENT_ID}
   api_key:  ${BAND_DRAFTER_AGENT_API_KEY}
+
+
+recruitment-research-agent:
+  agent_id: "4fc9412c-e351-4597-b849-1647abdf454f"
+  api_key:  "band_a_1781693515_ai6LGGMvH-u3je-xTFlzc6MpWknQzodz"
+
+
+
