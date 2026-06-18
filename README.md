@@ -1,6 +1,7 @@
 # Project Documentation
 
 ## Quick Start
+
 * **Prereqs**: Python 3.8+ and git.
 * **Virtualenv**: Create and activate the environment:
     ```bash
@@ -11,53 +12,32 @@
     ```bash
     pip install -r requirements.txt
     ```
+* **Dependencies used by the crawlers**: `requests`, `beautifulsoup4`, `lxml`, `fake-useragent` (installed via `requirements.txt`).
 
 ---
 
 ## Database
-* **Path**: `data/jobs.db` — Automatically created/updated by the crawlers. Use `sqlite3` to inspect the contents.
+
+* **Path**: `data/jobs.db` — created and updated automatically by the crawlers. No manual setup required.
+* **Tables**:
+    * `linkedin` — populated by `backend/crawler/linkedin.py`
+    * `staff_am` — populated by `backend/crawler/staff_am.py`
+
+**Inspect the database:**
+```bash
+sqlite3 data/jobs.db "SELECT count(*) FROM linkedin;"
+sqlite3 data/jobs.db "SELECT count(*) FROM staff_am;"
+```
 
 ---
 
-## Run LinkedIn Crawler
-* **File**: `backend/crawler/linkedin.py`
-* **Example**:
-    ```bash
-    python backend/crawler/linkedin.py \
-      --keywords "Data Engineer" \
-      --location "Armenia" \
-      --date-posted week \
-      --max-pages 2 \
-      --delay 0.5
-    ```
-* **Flags**:
-    * `--keywords`: Search query.
-    * `--location`: Text location or mapped geoId.
-    * `--date-posted`: Filter by `day`, `week`, `month`, or `any`.
-    * `--max-pages`: Limit the number of pages to crawl.
-    * `--delay`: Seconds between requests to avoid rate limiting.
+## Running Crawlers Manually
 
----
-
-## Run staff.am Crawler
-* **File**: `backend/crawler/staff_am.py`
-* **Example**:
-    ```bash
-    python backend/crawler/staff_am.py \
-      --max-pages 5 \
-      --delay 0.5
-    ```
-* **Notes**: `staff_am.py` saves data to the same `jobs.db` file (table: `staff_am`).
-
----
-
-## Run LinkedIn Crawler
+### LinkedIn Crawler
 
 * **File**: `backend/crawler/linkedin.py`
 
-### Examples
 **Basic usage:**
-
 ```bash
 python backend/crawler/linkedin.py \
   --keywords "Data Engineer" \
@@ -65,70 +45,85 @@ python backend/crawler/linkedin.py \
   --date-posted week \
   --max-pages 2 \
   --delay 0.5
-  
 ```
 
-Example (single page, verbose):
-
+**Single page, verbose example:**
 ```bash
-
 python backend/crawler/linkedin.py \
-
   --keywords "Backend Engineer" \
-
   --location "Yerevan, Armenia" \
-
   --date-posted day \
-
   --max-pages 1 \
-
   --delay 1.0 \
-
   --verbose
-
 ```
 
+**Flags:**
 
+| Flag | Description |
+|------|-------------|
+| `--keywords` | Search query (required) |
+| `--location` | Text location (e.g., `"Armenia"` or `"Yerevan, Armenia"`); the script may map known locations to a LinkedIn `geoId` |
+| `--date-posted` | `day` \| `week` \| `month` \| `any` |
+| `--max-pages` | Number of result pages to fetch |
+| `--delay` | Seconds to wait between requests (reduces rate-limiting) |
+| `--verbose` | Enable additional logging (if implemented) |
 
-Flags
+**Note on location accuracy:** LinkedIn may return listings outside the exact text passed to `--location`. For better targeting, `linkedin.py` uses known `geoId` mappings (see `GEO_ID_MAP` in the file) and may also post-filter parsed results by location — which can reduce the number of saved results when LinkedIn returns loosely-labeled cards.
 
-- `--keywords` : search query (required)
+Results are saved to `jobs.db` (table `linkedin`).
 
-- `--location` : text location (e.g., "Armenia" or "Yerevan, Armenia"); script may map some locations to LinkedIn `geoId`
+### staff.am Crawler
 
-- `--date-posted` : `day` | `week` | `month` | `any`
+* **File**: `backend/crawler/staff_am.py`
 
-- `--max-pages` : number of result pages to fetch
-
-- `--delay` : seconds to wait between requests (use to reduce rate-limiting)
-
-- `--verbose` : enable more logging (if implemented)
-
-
-
-Notes
-
-- LinkedIn may return listings outside the exact text `--location`. For better targeting, `linkedin.py` can use known `geoId` mappings (see the `GEO_ID_MAP` in the file) and the script may also perform post-parse location filtering—which can reduce saved results if LinkedIn returns loosely-labeled cards.
-
-- Results are saved into jobs.db (table `linkedin`). Inspect with:
-
+**Basic usage:**
 ```bash
-
-sqlite3 data/jobs.db "SELECT count(*) FROM linkedin;"
-
+python backend/crawler/staff_am.py \
+  --max-pages 5 \
+  --delay 0.5
 ```
+
+Results are saved to `jobs.db` (table `staff_am`).
 
 ---
 
-## Inspect DB
-* **Count records**:
-    ```bash
-    sqlite3 data/jobs.db "SELECT count(*) FROM linkedin;"
-    sqlite3 data/jobs.db "SELECT count(*) FROM staff_am;"
-    ```
+## Automated Hourly Runner
+
+`scripts/run_crawlers.sh` runs both crawlers on a schedule and writes logs to `data/logs/`. It uses a lock file to prevent overlapping runs and expects a virtualenv at `.venv` (edit the `PY` variable in the script if you use a different Python).
+
+**Make it executable:**
+```bash
+chmod +x scripts/run_crawlers.sh
+```
+
+**Run immediately** (for testing, with console output):
+```bash
+./scripts/run_crawlers.sh
+```
+
+**Schedule hourly with cron** (runs at minute 0 every hour):
+```bash
+crontab -e
+```
+Add the line:
+```
+0 * * * * /full/path/to/band-of-agents-hackathon/scripts/run_crawlers.sh
+```
+
+**View logs live:**
+```bash
+tail -F data/logs/linkedin-*.log data/logs/staff_am-*.log
+```
+
+**Notes:**
+* The crawlers update `jobs.db` automatically on every run — no manual DB steps required. Use manual runs (above) only for testing or debugging.
+* The lock file prevents concurrent runs. Removing this logic to allow overlapping runs is not recommended.
+* Logs are timestamped per run (UTC).
 
 ---
 
 ## Troubleshooting
-* **Location Issues**: If crawlers return few or no rows for a strict `--location`, try a broader location string or use known `geoId` mappings found within `linkedin.py`.
-* **Request Failures**: Ensure stable network access and verify that all dependencies are installed in your virtual environment: `requests`, `beautifulsoup4`, `lxml`, and `fake-useragent`.
+
+* **Few or no results for a `--location`**: Try a broader location string, or check `GEO_ID_MAP` in `linkedin.py` for a known-good mapping.
+* **Request failures**: Confirm network access is stable and that all dependencies (`requests`, `beautifulsoup4`, `lxml`, `fake-useragent`) are installed in your active virtual environment.
