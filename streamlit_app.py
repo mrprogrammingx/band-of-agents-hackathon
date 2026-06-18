@@ -20,6 +20,52 @@ BAND_API_KEY = os.getenv("BAND_API_KEY", "demo-key")
 
 DB_PATH = Path("data/jobs.db")
 
+def seed_db_if_empty():
+    if DB_PATH.exists() and db_has_rows(DB_PATH):
+        return
+
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS linkedin (
+            title TEXT,
+            company TEXT
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS staff_am (
+            title TEXT,
+            company TEXT
+        )
+    """)
+
+    sample_jobs = [
+    ("Senior Data Engineer", "Google"),
+    ("Data Engineer - Analytics Platform", "Amazon"),
+    ("Analytics Engineer (dbt + Snowflake)", "Netflix"),
+    ("Backend Data Engineer (Kafka/Python)", "Meta"),
+    ("ML Data Engineer (Feature Pipelines)", "Spotify"),
+    ("Streaming Data Engineer (Kafka, Flink)", "Uber"),
+    ("AdTech Data Engineer (RTB / Bid Data)", "The Trade Desk"),
+    ("Data Platform Engineer (Airflow + AWS)", "Airbnb"),
+    ("Data Engineer - BigQuery Pipelines", "Stripe"),
+    ("ETL Engineer (Batch + Real-time Systems)", "Databricks"),
+    ("Data Engineer - Marketing Analytics", "LinkedIn"),
+    ("Data Engineer (ClickHouse / OLAP)", "Pinterest"),
+    ("Analytics Engineer - Revenue Systems", "Snap Inc."),
+    ("Data Engineer - Cloud Data Lake", "Apple"),
+    ("Data Engineer (Python, SQL, Spark)", "Microsoft"),
+    ]
+
+    cur.executemany("INSERT INTO linkedin VALUES (?,?)", sample_jobs)
+    conn.commit()
+    conn.close()
+    
+    
 def run_crawlers_bg():
     with crawler_lock:
         logdir = Path("data/logs")
@@ -68,8 +114,8 @@ st.sidebar.write(f"Status: {st.session_state['crawler_status']}")
 
 if db_empty:
     st.sidebar.warning("DB empty — crawlers not yet run")
-
     if st.sidebar.button("▶ Initialize Data Pipeline"):
+        seed_db_if_empty()
         st.session_state["crawler_status"] = "starting"
         threading.Thread(target=run_crawlers_bg, daemon=True).start()
         st.rerun()
