@@ -369,15 +369,23 @@ async def main():
         "recruitment-research-agent"
     )
 
+    # llm = ChatOpenAI(
+    #     model="deepseek-ai/DeepSeek-V4-Pro",
+    #     temperature=0.2,
+    #     api_key=os.getenv(
+    #         "FEATHERLESS_API_KEY"
+    #     ),
+    #     base_url="https://api.featherless.ai/v1"
+    # )
+
     llm = ChatOpenAI(
-        model="deepseek-ai/DeepSeek-V4-Pro",
+        model="gpt-4o-mini-2024-07-18",
         temperature=0.2,
         api_key=os.getenv(
-            "FEATHERLESS_API_KEY"
+            "ML_API_KEY"
         ),
-        base_url="https://api.featherless.ai/v1"
+        base_url="https://api.aimlapi.com/v1/"
     )
-
     adapter = LangGraphAdapter(
         llm=llm,
         checkpointer=InMemorySaver(),
