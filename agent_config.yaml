@@ -1,3 +1,17 @@
 drafter:
   agent_id: ${BAND_DRAFTER_AGENT_ID}
   api_key:  ${BAND_DRAFTER_AGENT_API_KEY}
+
+
+recruitment-research-agent:
+  agent_id: "4fc9412c-e351-4597-b849-1647abdf454f"
+  api_key:  "band_a_1781693515_ai6LGGMvH-u3je-xTFlzc6MpWknQzodz"
+
+cover-letter-writer:
+  agent_id: "cfced530-0c38-4626-840a-500ba5a3524d"
+  api_key:  "band_a_1781765334_dnsjlNq8dsMNYAwZyJGft1eZPMdel809"
+
+job-hunter:
+  agent_id: "0f387539-7e7a-47e4-b946-3df2d55c6da3"
+  api_key:  "band_a_1781766660_SMUuxCOIuthZn_ZMHOlva1p3tdYeUPXc"
+
