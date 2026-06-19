@@ -29,21 +29,30 @@ def run_crawlers():
     python = sys.executable
 
     process = subprocess.Popen(
-    [
-        python,
-        "-m",
-        "backend.crawler.staff_am",
-        "--max-pages",
-        "1"
-    ],
-    stdout=subprocess.PIPE,
-    stderr=subprocess.STDOUT,
-    text=True
+        [
+            python,
+            "-u",  # 🔥 IMPORTANT: unbuffered output
+            "-m",
+            "backend.crawler.staff_am",
+            "--max-pages",
+            "1"
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1
     )
 
-    output = process.communicate()[0]
+    output_lines = []
 
-    return output, process.returncode
+    # 🔥 stream output live instead of waiting blindly
+    for line in process.stdout:
+        output_lines.append(line)
+        print(line, end="")  # helps debugging in Streamlit logs
+
+    process.wait()
+
+    return "".join(output_lines), process.returncode
     
 if st.sidebar.button("🚀 Get Latest jobs"):
     with st.spinner("Running crawler pipeline..."):
