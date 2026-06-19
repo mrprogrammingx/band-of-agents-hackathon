@@ -4,7 +4,7 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_DIR"
 
-PY="python"
+PY="python3"
 LOGDIR="$REPO_DIR/data/logs"
 mkdir -p "$LOGDIR"
 

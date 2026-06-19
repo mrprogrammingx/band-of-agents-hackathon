@@ -109,7 +109,7 @@ def fetch_job_details(job_id, job_url, headers=None):
     request_headers = headers or _get_session_headers()
 
     try:
-        response = requests.get(job_url, headers=request_headers, timeout=10)
+        response = requests.get(job_url, headers=request_headers, timeout=100)
         response.raise_for_status()
 
         soup = BeautifulSoup(response.text, 'html.parser')
