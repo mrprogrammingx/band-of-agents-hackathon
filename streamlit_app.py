@@ -30,7 +30,7 @@ def run_crawlers():
     python = sys.executable
 
     process = subprocess.Popen(
-        [python, "-m", "backend.crawler.linkedin"],
+        [python, "-m", "backend.crawler.staff_am"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
