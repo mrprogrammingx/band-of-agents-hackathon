@@ -369,10 +369,10 @@ def simulate_band_agents(jobs):
 # UI
 # -----------------------------
 st.set_page_config(page_title="Band Multi-Agent Job System", layout="wide")
-interval=120000  # 2 minutes for live demo video later should be 3600000 for 1 hour in production
+interval=180000  # 3 minutes for live demo video later should be 3600000 for 1 hour in production
 st_autorefresh(interval=interval, key="hourly_refresh")
 
-st.sidebar.info("🔁 Auto-refresh enabled (every 2 minutes)")
+st.sidebar.info("🔁 Auto-refresh enabled (every 3 minutes)")
 st.sidebar.caption("Simulates cron job for job ingestion pipeline")
 
 st.title("🚀 Band Multi-Agent Job Assistant")
