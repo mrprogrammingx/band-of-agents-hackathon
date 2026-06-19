@@ -25,7 +25,7 @@ demo_mode = st.sidebar.radio(
 )
 
 def run_crawlers():
-    process = subprocess.Popen(
+    process = subprocess.run(
         ["/bin/bash", "scripts/run_crawlers.sh"],
         cwd=os.getcwd(),
         stdout=subprocess.PIPE,
@@ -33,26 +33,24 @@ def run_crawlers():
         text=True
     )
 
-    output_lines = []
-
-    for line in process.stdout:
-        output_lines.append(line)
-
-    process.wait()
-
-    return "".join(output_lines), process.returncode
+    return process.stdout, process.returncode
     
 if st.sidebar.button("🚀 Get Latest jobs"):
     with st.spinner("Running crawler pipeline..."):
-        logs, code = run_crawlers()
 
+        logs, code = run_crawlers()
 
     if code == 0:
         st.sidebar.success("Crawlers completed successfully")
-        st.code(logs[-2000:])  # last logs
+
+        if logs.strip():
+            st.text_area("📡 Pipeline Logs", logs[-5000:], height=300)
+        else:
+            st.warning("No logs captured (but crawler may still have run)")
+
     else:
         st.sidebar.error("Crawler failed")
-        st.code(logs.stderr)
+        st.text_area("❌ Error Logs", logs, height=300)
             
              
 def get_active_db(demo_mode):
