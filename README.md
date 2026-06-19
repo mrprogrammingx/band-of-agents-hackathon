@@ -1,5 +1,7 @@
 # AI Recruitment Platform with Band.ai
 
+![Cover image](demo/images/cover.png)
+
 An AI-powered recruitment ecosystem built on **Band.ai**, consisting of three specialized agents that collaborate to streamline the hiring and job application process.
 
 ## Overview
@@ -416,6 +418,16 @@ You can preview or download these files directly from the repository.
 https://amir-zarecom-ux7nnec4bzvfaigmwynxf2.streamlit.app/
 
 ---
+
+### Screenshots
+
+Preview screenshots from the app (click to view full-size in the repo):
+
+![Streamlit top](demo/images/streamlit-top.png)
+![Streamlit 2](demo/images/streamlit-2.png)
+![Streamlit 3](demo/images/streamlit-3.png)
+![Streamlit 4](demo/images/streamlit-4.png)
+![Streamlit 5](demo/images/streamlit-5.png)
 
 ```text
 Candidate Profile
