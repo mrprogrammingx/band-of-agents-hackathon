@@ -31,10 +31,16 @@ def run_crawlers():
     python = sys.executable
 
     process = subprocess.Popen(
-        [python, "-m", "backend.crawler.staff_am"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
+    [
+        python,
+        "-m",
+        "backend.crawler.staff_am",
+        "--max-pages",
+        "1"
+    ],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True
     )
 
     output = process.communicate()[0]
