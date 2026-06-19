@@ -24,6 +24,21 @@ demo_mode = st.sidebar.radio(
     ["Auto (Smart Fallback)", "Force Live DB", "Force Sample DB", "Force Mock Data"]
 )
 
+def run_crawlers():
+    result = subprocess.run(
+        ["/bin/bash", "scripts/run_crawlers.sh"],
+        cwd=os.getcwd(),
+        capture_output=True,
+        text=True
+    )
+    return result
+    
+if st.button("🚀 Update Jobs"):
+    threading.Thread(
+        target=run_crawlers,
+        daemon=True
+    ).start()
+    
 def get_active_db(demo_mode):
 
     # if user overrides system
