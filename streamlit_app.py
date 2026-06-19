@@ -12,8 +12,6 @@ import subprocess
 from pathlib import Path
 import sys
 
-st.text_area(sys.executable)
-
 PRIMARY_DB = Path("data/jobs.db")
 FALLBACK_DB = Path("data/jobs_sample.db")
 crawler_lock = threading.Lock()
