@@ -25,44 +25,34 @@ demo_mode = st.sidebar.radio(
 )
 
 def run_crawlers():
-    result = subprocess.run(
+    process = subprocess.Popen(
         ["/bin/bash", "scripts/run_crawlers.sh"],
         cwd=os.getcwd(),
-        capture_output=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True
     )
-    return result
+
+    output_lines = []
+
+    for line in process.stdout:
+        output_lines.append(line)
+
+    process.wait()
+
+    return "".join(output_lines), process.returncode
     
 if st.sidebar.button("🚀 Get Latest jobs"):
     with st.spinner("Running crawler pipeline..."):
-        result = run_crawlers()
+        logs, code = run_crawlers()
 
-    if result.returncode == 0:
+
+    if code == 0:
         st.sidebar.success("Crawlers completed successfully")
-        st.code(result.stdout[-2000:])  # last logs
+        st.code(logs[-2000:])  # last logs
     else:
         st.sidebar.error("Crawler failed")
-        st.code(result.stderr)
-   
-
-def render_logs_ui(log_text: str):
-    lines = log_text.split("\n")
-
-    st.subheader("📡 Pipeline Logs")
-
-    for line in lines[-50:]:  # last 50 lines
-        line = line.strip()
-        if not line:
-            continue
-
-        if "ERROR" in line or "failed" in line.lower():
-            st.error(f"❌ {line}")
-        elif "warning" in line.lower():
-            st.warning(f"⚠️ {line}")
-        elif "completed" in line.lower() or "done" in line.lower():
-            st.success(f"✅ {line}")
-        else:
-            st.info(f"ℹ️ {line}")
+        st.code(logs.stderr)
             
              
 def get_active_db(demo_mode):
