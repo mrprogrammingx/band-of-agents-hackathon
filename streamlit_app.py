@@ -10,6 +10,8 @@ import json
 import threading
 import subprocess
 from pathlib import Path
+import sys
+print(sys.executable)
 
 PRIMARY_DB = Path("data/jobs.db")
 FALLBACK_DB = Path("data/jobs_sample.db")
@@ -25,15 +27,18 @@ demo_mode = st.sidebar.radio(
 )
 
 def run_crawlers():
-    process = subprocess.run(
-        ["/bin/bash", "scripts/run_crawlers.sh"],
-        cwd=os.getcwd(),
+    python = sys.executable
+
+    process = subprocess.Popen(
+        [python, "-m", "backend.crawler.linkedin"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
     )
 
-    return process.stdout, process.returncode
+    output = process.communicate()[0]
+
+    return output, process.returncode
     
 if st.sidebar.button("🚀 Get Latest jobs"):
     with st.spinner("Running crawler pipeline..."):
