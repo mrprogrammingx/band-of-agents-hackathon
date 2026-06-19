@@ -398,6 +398,25 @@ Resume
 
 Job Hunter Agent finds matching jobs.
 
+---
+
+## Demo & Media
+
+Demo assets are included in the repository under the `demo/` folder:
+
+- `demo/demo.pdf` — walkthrough and feature summary (PDF)
+- `demo/demo.mp4` — short demo video showcasing the app (MP4)
+- `demo/images/` — project screenshots used in the Streamlit UI (PNG / JPG)
+- `demo/images/cover.png` — cover image used on the demo page
+
+You can preview or download these files directly from the repository.
+
+**Live demo (deployed):**
+
+https://amir-zarecom-ux7nnec4bzvfaigmwynxf2.streamlit.app/
+
+---
+
 ```text
 Candidate Profile
 → Top Matching Jobs

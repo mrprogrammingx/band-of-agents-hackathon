@@ -5,8 +5,6 @@ import random
 from datetime import datetime
 from streamlit_autorefresh import st_autorefresh
 import time
-import requests
-import json
 import threading
 import subprocess
 from pathlib import Path
