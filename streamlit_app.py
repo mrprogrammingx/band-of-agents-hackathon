@@ -71,7 +71,8 @@ def get_active_db(demo_mode):
 
 def get_pipeline_state(demo_mode):
     db = get_active_db(demo_mode)
-
+    print(f"Active DB: {db}") #TODO: remove debug print
+    
     if db == PRIMARY_DB:
         return {
             "active_source": "Live Crawlers (jobs.db)",
@@ -205,16 +206,38 @@ def load_jobs(demo_mode, limit=20):
         conn = sqlite3.connect(db)
         cursor = conn.cursor()
 
-        cursor.execute("""
-        SELECT
-            url, title, company, location, category,
-            employment_type, description,
-            responsibilities, required_qualifications,
-            required_skills, additional_info,
-            deadline, source_job_id
+        cursor.execute("PRAGMA table_info(staff_am)")
+        
+        available_columns = [row[1] for row in cursor.fetchall()]
+        
+        wanted_columns = [
+            "url",
+            "title",
+            "company",
+            "location",
+            "category",
+            "employment_type",
+            "description",
+            "responsibilities",
+            "required_qualifications",
+            "required_skills",
+            "additional_info",
+            "deadline",
+            "source_job_id"
+        ]
+
+        selected_columns = [
+            col for col in wanted_columns
+            if col in available_columns
+        ]
+
+        query = f"""
+        SELECT {",".join(selected_columns)}
         FROM staff_am
         LIMIT ?
-        """, (limit,))
+        """
+
+        cursor.execute(query, (limit,))
 
         rows = cursor.fetchall()
 
