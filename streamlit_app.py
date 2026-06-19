@@ -10,60 +10,90 @@ import json
 import threading
 import subprocess
 from pathlib import Path
-import streamlit as st
 
+PRIMARY_DB = Path("data/jobs.db")
+FALLBACK_DB = Path("data/jobs_sample.db")
 crawler_lock = threading.Lock()
         
         
 BAND_API_URL = "https://api.band.ai/v1/messages"  # placeholder
 BAND_API_KEY = os.getenv("BAND_API_KEY", "demo-key")
 
-DB_PATH = Path("data/jobs.db")
+demo_mode = st.sidebar.radio(
+    "Select pipeline source",
+    ["Auto (Smart Fallback)", "Force Live DB", "Force Sample DB", "Force Mock Data"]
+)
 
-def seed_db_if_empty():
-    if DB_PATH.exists() and db_has_rows(DB_PATH):
-        return
+def get_active_db(demo_mode):
 
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # if user overrides system
+    if demo_mode == "Force Live DB":
+        return PRIMARY_DB
 
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
+    if demo_mode == "Force Sample DB":
+        return FALLBACK_DB
 
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS linkedin (
-            title TEXT,
-            company TEXT
-        )
-    """)
+    if demo_mode == "Force Mock Data":
+        return None
 
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS staff_am (
-            title TEXT,
-            company TEXT
-        )
-    """)
+    # default smart logic
+    def db_has_data(db_path: Path) -> bool:
+        if not db_path.exists():
+            return False
 
-    sample_jobs = [
-    ("Senior Data Engineer", "Google"),
-    ("Data Engineer - Analytics Platform", "Amazon"),
-    ("Analytics Engineer (dbt + Snowflake)", "Netflix"),
-    ("Backend Data Engineer (Kafka/Python)", "Meta"),
-    ("ML Data Engineer (Feature Pipelines)", "Spotify"),
-    ("Streaming Data Engineer (Kafka, Flink)", "Uber"),
-    ("AdTech Data Engineer (RTB / Bid Data)", "The Trade Desk"),
-    ("Data Platform Engineer (Airflow + AWS)", "Airbnb"),
-    ("Data Engineer - BigQuery Pipelines", "Stripe"),
-    ("ETL Engineer (Batch + Real-time Systems)", "Databricks"),
-    ("Data Engineer - Marketing Analytics", "LinkedIn"),
-    ("Data Engineer (ClickHouse / OLAP)", "Pinterest"),
-    ("Analytics Engineer - Revenue Systems", "Snap Inc."),
-    ("Data Engineer - Cloud Data Lake", "Apple"),
-    ("Data Engineer (Python, SQL, Spark)", "Microsoft"),
-    ]
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
 
-    cur.executemany("INSERT INTO linkedin VALUES (?,?)", sample_jobs)
-    conn.commit()
-    conn.close()
+            for table in ("linkedin", "staff_am"):
+                try:
+                    cur.execute(f"SELECT COUNT(*) FROM {table}")
+                    if cur.fetchone()[0] > 0:
+                        conn.close()
+                        return True
+                except Exception:
+                    continue
+
+            conn.close()
+        except Exception:
+            pass
+
+        return False
+
+    if db_has_data(PRIMARY_DB):
+        return PRIMARY_DB
+
+    if db_has_data(FALLBACK_DB):
+        return FALLBACK_DB
+
+    return None
+
+
+def get_pipeline_state(demo_mode):
+    db = get_active_db(demo_mode)
+
+    if db == PRIMARY_DB:
+        return {
+            "active_source": "Live Crawlers (jobs.db)",
+            "status": "healthy",
+            "color": "green"
+        }
+
+    elif db == FALLBACK_DB:
+        return {
+            "active_source": "Sample Dataset (jobs_sample.db)",
+            "status": "fallback",
+            "color": "orange"
+        }
+
+    else:
+        return {
+            "active_source": "In-Memory Mock Data",
+            "status": "emergency",
+            "color": "red"
+        }
+        
+state = get_pipeline_state(demo_mode)
     
     
 def run_crawlers_bg():
@@ -106,59 +136,114 @@ def db_has_rows(db_path: Path) -> bool:
 if "crawler_status" not in st.session_state:
     st.session_state["crawler_status"] = "idle"
 
-db_empty = (not DB_PATH.exists()) or (not db_has_rows(DB_PATH))
+DB_PATH = get_active_db(demo_mode)
+db_empty = (DB_PATH is None) or (not db_has_rows(DB_PATH))
 
 st.sidebar.subheader("🧠 Data Pipeline Status")
+
+st.subheader("📡 Pipeline Execution Flow")
+
+st.progress(20, text="🧹 Crawlers fetching jobs")
+st.progress(40, text=f"📦 Source: {state['active_source']}")
+st.progress(60, text="⚙️ Processing Layer")
+st.progress(80, text="🤖 Agent 1 → Agent 2")
+st.progress(100, text="🏁 Agent 3 → Recommendations Ready")
 
 st.sidebar.write(f"Status: {st.session_state['crawler_status']}")
 
 if db_empty:
     st.sidebar.warning("DB empty — crawlers not yet run")
     if st.sidebar.button("▶ Initialize Data Pipeline"):
-        seed_db_if_empty()
         st.session_state["crawler_status"] = "starting"
         threading.Thread(target=run_crawlers_bg, daemon=True).start()
         st.rerun()
 else:
     st.sidebar.success("DB ready — jobs loaded")
-
+        
 # -----------------------------
 # Helpers
 # -----------------------------
-def load_jobs(limit=20):
-    """
-    Load jobs from SQLite DB.
-    Fallback to mock data if DB doesn't exist.
-    """
-    if not DB_PATH.exists():
+def load_jobs(demo_mode, limit=20):
+    db = get_active_db(demo_mode)
+
+    if db == PRIMARY_DB:
+        st.success("🟢 Using live crawler database")
+    elif db == FALLBACK_DB:
+        st.warning("🟡 Using sample fallback database")
+    else:
+        st.info("🔵 Using in-memory demo data")
+    # 🟡 Final fallback (UI always works)
+    if db is None:
         return [
-            ("Data Engineer", "ABC Corp"),
-            ("Backend Engineer", "XYZ Ltd"),
-            ("Python Developer", "TechSoft"),
-        ]
+                    {
+            "title": "Data Engineer",
+            "company": "Google",
+            "location": "Remote",
+            "category": "Data",
+            "employment_type": "Full-time",
+            "required_skills": "Python, SQL"
+        },
+                    {
+            "title": "Backend Engineer",
+            "company": "Amazon",
+            "location": "Remote",
+            "category": "Software",
+            "employment_type": "Full-time",
+            "required_skills": "Java, AWS"
+        },
+                    {
+            "title": "ML Engineer",
+            "company": "Meta",
+            "location": "Remote",
+            "category": "Data",
+            "employment_type": "Full-time",
+            "required_skills": "Python, TensorFlow"
+        },
+                ]
 
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(db)
         cursor = conn.cursor()
 
         cursor.execute("""
-            SELECT title, company
-            FROM linkedin
-            LIMIT ?
+        SELECT
+            url, title, company, location, category,
+            employment_type, description,
+            responsibilities, required_qualifications,
+            required_skills, additional_info,
+            deadline, source_job_id
+        FROM staff_am
+        LIMIT ?
         """, (limit,))
 
         rows = cursor.fetchall()
-        conn.close()
 
         if not rows:
-            return [("No jobs found", "DB Empty")]
+            return [{
+                "title": "No jobs found",
+                "company": "Empty DB",
+                "location": "N/A",
+                "category": "",
+                "employment_type": ""
+            }]
 
-        return rows
+        columns = [desc[0] for desc in cursor.description]
 
-    except Exception:
-        return [("Error reading DB", "Check schema")]
+        jobs = [dict(zip(columns, row)) for row in rows]
 
+        return jobs
 
+    except Exception as e:
+        st.error(f"DB ERROR: {e}")
+        return [{
+            "title": "Error reading DB",
+            "company": "Check schema",
+            "location": "N/A",
+            "category": "",
+            "employment_type": ""
+        }]
+    
+  
 def simulate_band_agents(jobs):
     """
     Simulate 3-agent collaboration through Band.
@@ -169,10 +254,14 @@ def simulate_band_agents(jobs):
     st.info("Agent 1 (Job Ingestor): Processing incoming jobs...")
 
     processed_jobs = []
-    for title, company in jobs:
+    for job in jobs:
+        if not isinstance(job, dict):
+            continue
         processed_jobs.append({
-            "title": title,
-            "company": company,
+            "title": job["title"],
+            "company": job["company"],
+            "location": job["location"],
+            "skills": job.get("required_skills", "N/A"),
             "score_input": random.randint(60, 100)
         })
 
@@ -219,31 +308,78 @@ st.sidebar.caption("Simulates cron job for job ingestion pipeline")
 st.title("🚀 Band Multi-Agent Job Assistant")
 st.caption("Hackathon Demo: Multi-agent system with job crawling + Band coordination")
 
+st.sidebar.subheader("🧠 Data Pipeline Control Tower")
+
+
+st.sidebar.markdown(f"""
+### Pipeline Status
+**Source:** {state['active_source']}  
+**Status:** `{state['status']}`
+""")
+
+if state["status"] == "healthy":
+    st.sidebar.success("🟢 Live system active")
+elif state["status"] == "fallback":
+    st.sidebar.warning("🟡 Using fallback dataset")
+else:
+    st.sidebar.error("🔴 Using mock data")
+    
+
+st.sidebar.subheader("🔀 Switch Data Source (Demo Mode)")
+
 
 # -----------------------------
 # Section 1: Jobs
 # -----------------------------
 st.header("📊 Latest Jobs")
 
-jobs = load_jobs()
+jobs = load_jobs(demo_mode)
 
 st.subheader("📊 Latest Jobs")
 
-for title, company in jobs:
+for job in jobs:
+    if not isinstance(job, dict):
+        continue
     st.markdown(f"""
-    <div style="
-        padding:12px;
-        border-radius:10px;
-        border:1px solid #ddd;
-        margin-bottom:8px;
-        background-color:#0f172a;
-        color:white;
-    ">
-        <h4 style="margin:0;">💼 {title}</h4>
-        <p style="margin:0; opacity:0.8;">🏢 {company}</p>
-    </div>
-    """, unsafe_allow_html=True)
+        <div style="
+            padding:14px;
+            border-radius:12px;
+            border:1px solid #2d3748;
+            margin-bottom:10px;
+            background:linear-gradient(135deg,#0f172a,#1e293b);
+            color:white;
+        ">
+            <h3 style="margin:0;">💼 {job['title']}</h3>
+            <p style="margin:4px 0;">🏢 {job['company']} | 📍 {job.get('location','N/A')}</p>
+            <p style="opacity:0.7; font-size:12px;">
+                {job.get('category','')} • {job.get('employment_type','')}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
+
+st.header("📊 Job Analytics Dashboard")
+
+# -------------------------
+# 1. Category Distribution
+# -------------------------
+categories = {}
+companies = {}
+
+for job in jobs:
+    cat = job.get("category", "Unknown")
+    comp = job.get("company", "Unknown")
+
+    categories[cat] = categories.get(cat, 0) + 1
+    companies[comp] = companies.get(comp, 0) + 1
+
+st.subheader("📂 Jobs by Category")
+
+st.bar_chart(categories)
+
+st.subheader("🏢 Top Hiring Companies")
+
+st.bar_chart(companies)
 
 
 # -----------------------------
@@ -274,6 +410,12 @@ if st.button("▶ Run Demo"):
     st.dataframe(scored_jobs)
 
     st.write("---")
+    
+    st.subheader("📈 Agent Score Distribution")
+
+    scores = [job["score"] for job in scored_jobs]
+
+    st.bar_chart(scores)
 
     st.subheader("📡 Band Message Simulation")
 
@@ -307,6 +449,13 @@ if st.button("▶ Run Demo"):
 # -----------------------------
 # Footer
 # -----------------------------
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Pipeline Status", state["status"].upper())
+col2.metric("Active Source", state["active_source"].split(" ")[0])
+col3.metric("Mode", demo_mode)
+
 st.write("---")
 st.caption("Built for Band of Agents Hackathon | Multi-Agent Collaboration System")
 
