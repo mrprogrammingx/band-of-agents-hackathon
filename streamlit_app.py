@@ -71,7 +71,6 @@ def get_active_db(demo_mode):
 
 def get_pipeline_state(demo_mode):
     db = get_active_db(demo_mode)
-    print(f"Active DB: {db}") #TODO: remove debug print
     
     if db == PRIMARY_DB:
         return {
@@ -209,7 +208,6 @@ def load_jobs(demo_mode, limit=20):
         cursor.execute("PRAGMA table_info(staff_am)")
         
         available_columns = [row[1] for row in cursor.fetchall()]
-        st.write("Available:", available_columns)
 
         wanted_columns = [
             "url",
@@ -231,7 +229,7 @@ def load_jobs(demo_mode, limit=20):
             col for col in wanted_columns
             if col in available_columns
         ]
-        st.write("Selected:", selected_columns)
+
         query = f"""
         SELECT {",".join(selected_columns)}
         FROM staff_am
@@ -258,7 +256,6 @@ def load_jobs(demo_mode, limit=20):
         return jobs
 
     except Exception as e:
-        st.error(f"DB ERROR: {e}")
         return [{
             "title": "Error reading DB",
             "company": "Check schema",
