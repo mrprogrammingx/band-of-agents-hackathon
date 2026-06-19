@@ -368,7 +368,9 @@ async def main():
     agent_id, api_key = load_agent_config(
         "recruitment-research-agent"
     )
-
+    agent_id = os.getenv("RECRUITMENT_RESEARCH_AGENT_ID")
+    api_key = os.getenv("RECRUITMENT_RESEARCH_AGENT_API_KEY")
+    
     # llm = ChatOpenAI(
     #     model="deepseek-ai/DeepSeek-V4-Pro",
     #     temperature=0.2,

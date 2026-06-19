@@ -260,6 +260,9 @@ async def main():
     agent_id, api_key = load_agent_config(
         "job-hunter"
     )
+    
+    agent_id = os.getenv("JOB_HUNTER_AGENT_ID")
+    api_key = os.getenv("JOB_HUNTER_AGENT_API_KEY")
 
     # llm = ChatOpenAI(
     #     model="deepseek-ai/DeepSeek-V4-Pro",

@@ -201,6 +201,9 @@ async def main():
     agent_id, api_key = load_agent_config(
         "cover-letter-writer"
     )
+    
+    agent_id = os.getenv("COVER_LETTER_WRITER_AGENT_ID")
+    api_key = os.getenv("COVER_LETTER_WRITER_API_KEY")
 
     # llm = ChatOpenAI(
     #     model="deepseek-ai/DeepSeek-V4-Pro",
