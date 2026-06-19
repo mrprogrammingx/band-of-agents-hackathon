@@ -33,12 +33,38 @@ def run_crawlers():
     )
     return result
     
-if st.button("🚀 Update Jobs"):
-    threading.Thread(
-        target=run_crawlers,
-        daemon=True
-    ).start()
-    
+if st.sidebar.button("🚀 Get Latest jobs"):
+    with st.spinner("Running crawler pipeline..."):
+        result = run_crawlers()
+
+    if result.returncode == 0:
+        st.sidebar.success("Crawlers completed successfully")
+        st.code(result.stdout[-2000:])  # last logs
+    else:
+        st.sidebar.error("Crawler failed")
+        st.code(result.stderr)
+   
+
+def render_logs_ui(log_text: str):
+    lines = log_text.split("\n")
+
+    st.subheader("📡 Pipeline Logs")
+
+    for line in lines[-50:]:  # last 50 lines
+        line = line.strip()
+        if not line:
+            continue
+
+        if "ERROR" in line or "failed" in line.lower():
+            st.error(f"❌ {line}")
+        elif "warning" in line.lower():
+            st.warning(f"⚠️ {line}")
+        elif "completed" in line.lower() or "done" in line.lower():
+            st.success(f"✅ {line}")
+        else:
+            st.info(f"ℹ️ {line}")
+            
+             
 def get_active_db(demo_mode):
 
     # if user overrides system
@@ -248,6 +274,7 @@ def load_jobs(demo_mode, limit=20):
         query = f"""
         SELECT {",".join(selected_columns)}
         FROM staff_am
+        order by id desc
         LIMIT ?
         """
 
